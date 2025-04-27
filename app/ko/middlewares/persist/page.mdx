@@ -1,0 +1,94 @@
+# persist
+
+persist 미들웨어를 사용하면 caro-kann이 관리하는 전역 상태를 로컬 스토리지, 세션 스토리지, 쿠키 등에 저장할 수 있게 됩니다. 이러한 기능은 웹 페이지의 테마 설정과 같이 사용자가 페이지를 새로 고침하거나 세션이 종료된 후에도 상태를 유지해야 하는 값들에 적합하며, 특히 사용자 경험을 개선하는 데 중요합니다.
+
+
+```tsx
+const useStore = create(
+  persist(initialState, persistOptions)
+)
+```
+
+전역 상태를 저장소에 보관할 때, Caro-Kann은 state와 함께 version을 명시합니다. 이를 사용하면 애플리케이션의 상태 구조가 변경되었을 때도 이전 버전의 데이터를 손쉽게 변환하거나 무시할 수 있습니다. 가령 theme에 배경색 말고도 글꼴 크기에 대한 요구가 추가되어야 한다고 생각해봅시다. Caro-Kann은 이를 처리하기 위해 migrate 객체를 사용합니다.
+
+```tsx
+type Theme = "light" | "dark";
+ 
+const useStore = create<Theme>(
+  persist(
+    "light",
+    {
+      local: "theme",
+   // session: "theme",
+   // cookie: "theme",
+    }
+  )
+);
+```
+
+| Key   | Value                          |
+|-------|--------------------------------|
+| theme | `{"state":"light","version":0}`  |
+
+migrate 객체가 존재하면 Caro-Kann은 클라이언트가 서비스에 접속할 때 자동으로 버전 차이를 확인합니다. 만약 클라이언트의 상태가 최신 버전이 아닐 경우에는 migrate.strategy 함수를 호출하여 상태를 최신 버전으로 업데이트 합니다. strategy 메서드는 클라이언트에 존재하는 기존 상태와 버전을 인자로 받아, 이를 기반으로 업데이트된 상태를 반환합니다.
+
+```tsx
+type Theme = { color: "light" | "dark", fontSize: number };
+ 
+const useStore = create<Theme>(
+  persist(
+    { color: "light", fontSize: 16 },
+    {
+      local: "theme",
+      migrate: {
+        version: 1,
+        strategy: (prevState, prevVersion) => {
+          return { color: prevState, fontSize: 16 };
+        },
+      },
+    }
+  )
+);
+```
+| Key   | Value                                                |
+|-------|------------------------------------------------------|
+| theme | `{"state":{"color":"dark","fontSize":16},"version":1}` |
+
+migrate를 사용해서 0버전을 1버전으로 잘 업데이트 했습니다. 그런데 몇 주 뒤, 선임 개발자가 찾아와 글꼴 상태를 나타내는 이름을 font-size로 바꿔야 한다고 합니다. migrate는 클라이언트가 서비스에 접속할 때만 동작하므로, 아직 서비스에 접속하지 않은 유저 클라이언트는 여전히 0 버전인 상태입니다. 따라서 우리는 0버전과 1버전 모두를 해결해야 합니다.
+
+
+하지만 걱정할 필요 없습니다. switch 문을 사용하면 각각의 버전에 대해 효과적으로 대응할 수 있습니다.
+
+```tsx
+type Theme = { color: "light" | "dark", ["font-size"]: number };
+ 
+const strategy = (prevState: any, prevVersion: number) => {
+  switch (prevVersion) {
+    case 0:
+      return { color: prevState, ["font-size"]: 16 };
+    case 1:
+      return { color: prevState.color, ["font-size"]: prevState.fontSize };
+    default:
+      return prevState;
+  }
+}
+
+const useStore = create<Theme>(
+  persist(
+    { color: "light", ["font-size"]: 16 },
+    {
+      local: "theme",
+      migrate: {
+        version: 2,
+        strategy,
+      },
+    }
+  )
+);
+```
+| Key   | Value                                                 |
+|-------|-------------------------------------------------------|
+| theme | `{"state":{"color":"dark","font-size":16},"version":2}` |
+
+
+이전 버전이 여럿이라면 prevState의 타입을 지정하는 것이 사실상 불가능합니다. 때문에 any를 사용하게 되는데, 이로 인해 Caro-Kann은 제대로 상태를 추론하지 못하게 됩니다. 그러니 migrate를 사용해 버전 관리를 하고 있다면 create에 제네릭 타입을 제공하여 Caro-Kann이 제대로 상태의 타입을 추론할 수 있도록 해주어야 합니다.
