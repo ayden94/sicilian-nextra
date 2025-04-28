@@ -2,20 +2,20 @@ export default function metadata(lang) {
   // 언어별 메타데이터 설정
   const metadata = {
     en: {
-      title: 'Caro-Kann',
-      description: 'Global state management library',
+      title: 'sicilian',
+      description: 'Form management library',
       openGraph: {
-        title: 'Caro-Kann - Global State Management Library',
-        description: 'A global state management tool with syntax similar to useState',
+        title: 'sicilian - Form Management Library',
+        description: 'Form management library',
         locale: 'en',
       }
     },
     ko: {
-      title: 'Caro-Kann',
-      description: '전역 상태 관리 라이브러리',
+      title: 'sicilian',
+      description: 'form 관리 라이브러리',
       openGraph: {
-        title: 'Caro-Kann - 전역 상태 관리 라이브러리',
-        description: 'useState와 유사한 문법으로 사용할 수 있는 전역 상태 관리 도구',
+        title: 'sicilian - form 관리 라이브러리',
+        description: 'form 관리 라이브러리',
         locale: 'ko',
       }
     }
@@ -25,20 +25,20 @@ export default function metadata(lang) {
   const commonMetadata = {
     images: [
       {
-        url: 'https://github.com/user-attachments/assets/1fa53294-205c-45a3-b6f8-b1be585ce11e',
+        url: 'https://private-user-images.githubusercontent.com/144667387/438031871-8b31fafe-108f-4d2e-a1f4-0b1b53fc049a.jpg?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDU4MTI0NDAsIm5iZiI6MTc0NTgxMjE0MCwicGF0aCI6Ii8xNDQ2NjczODcvNDM4MDMxODcxLThiMzFmYWZlLTEwOGYtNGQyZS1hMWY0LTBiMWI1M2ZjMDQ5YS5qcGc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNDI4JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDQyOFQwMzQ5MDBaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04OTgwNjA5MzI5NmYxZDNjNzJjOTEyNjg5ZmI0NTU1ZWMwOGE3YzBkMjUxNjdlNzFkMmIwNGM3NjdlY2E3NDgxJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.pMlp_3aq-t-AIZS22t0DEsCPX-4SJt9W5-Ofsmz6ynE',
         width: 1200,
         height: 630,
-        alt: 'Caro-Kann 라이브러리',
+        alt: 'sicilian 라이브러리',
       }
     ],
     openGraph: {
       type: 'website',
       images: [
         {
-          url: 'https://github.com/user-attachments/assets/1fa53294-205c-45a3-b6f8-b1be585ce11e',
+          url: 'https://private-user-images.githubusercontent.com/144667387/438031871-8b31fafe-108f-4d2e-a1f4-0b1b53fc049a.jpg?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDU4MTI0NDAsIm5iZiI6MTc0NTgxMjE0MCwicGF0aCI6Ii8xNDQ2NjczODcvNDM4MDMxODcxLThiMzFmYWZlLTEwOGYtNGQyZS1hMWY0LTBiMWI1M2ZjMDQ5YS5qcGc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNDI4JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDQyOFQwMzQ5MDBaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04OTgwNjA5MzI5NmYxZDNjNzJjOTEyNjg5ZmI0NTU1ZWMwOGE3YzBkMjUxNjdlNzFkMmIwNGM3NjdlY2E3NDgxJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.pMlp_3aq-t-AIZS22t0DEsCPX-4SJt9W5-Ofsmz6ynE',
           width: 1200,
           height: 630,
-          alt: 'Caro-Kann Library',
+          alt: 'sicilian Library',
         }
       ],
     }
@@ -54,4 +54,3 @@ export default function metadata(lang) {
     }
   };
 }
-
