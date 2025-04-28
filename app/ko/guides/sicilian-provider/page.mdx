@@ -1,0 +1,83 @@
+
+# SicilianProvider 컴포넌트와 useSicilianContext 함수
+
+기존에는 아래와 같이 input 태그 혹은 Input 컴포넌트에 스프레드 연산자를 사용해 register 함수가 반환하는 객체의 프로퍼티를 그대로 props로 넘겨주었습니다. 때문에 input에 입력시 form 전체가 리랜더링되는 문제가 있었습니다.
+```tsx
+<input {...register('email', validator.email)}>
+```
+이를 억제하기 위해서는 스프레드 연산자가 아니라 register와 name을 props로 넘겨주고, Input 컴포넌트 내부에서 조합해 사용합니다. 문제는 register와 name가 굉장히 좁은 타입으로 추론되고 있어서 컴포넌트에 props으로 넘겨주는 일이 대단히 번거롭다는 점입니다.
+
+&nbsp;
+
+이러한 문제를 해결하기 위해 sicilian은 SicilianProvider 컴포넌트와 useSicilianContext 함수를 제공합니다. 앞서 잠깐 언급했던 바와 같이 이들은 내부적으로 Context API를 사용하여 구현되었으며, 미리 정해진 값과 함수만을 전달할 수 있기 때문에 타입 정의 문제에서도 자유롭게 사용할 수 있습니다.
+
+SicilianProvider 컴포넌트는 `register, name, validate, type, getValues, getErrors` 이렇게 여섯 개의 값과 메소드를 갖는 value 객체를 인자로 받게됩니다. 이 중 register와 name은 반드시 제공해야하며, register의 타입에 따라 name에 넣을 수 있는 문자열 타입의 종류가 자동으로 추론됩니다.
+
+<img width="942" alt="스크린샷 2024-09-11 오후 8 16 46" src="https://github.com/user-attachments/assets/935c0df7-de47-48e8-90ba-6b6deed84caa" />
+
+&nbsp;
+
+register와 name를 제외한 나머지는 옵셔널하게 제공할 수 있습니다. 그리고 이렇게 넣어준 값들은 하위 노드 어딘가에서 `useSicilianContext` 함수를 통해 조회할 수 있습니다. 만약 상위 노드에 SicilianProvider 컴포넌트가 존재하지 않으면 useSicilianContext 함수는 아래와 같은 에러를 던지게 됩니다.
+
+<img width="991" alt="스크린샷 2024-09-11 오후 8 03 26" src="https://github.com/user-attachments/assets/aeb50d35-7d52-4e24-abea-bb2d4393bfa1" />
+
+&nbsp;
+
+만약 옵셔널하게 제공하는 validate, type, getValues, getErrors props를 SicilianProvider에 제공하지 않은 채 useSicilianContext 함수를 통해 조회하려 한다면 어떻게 될까요? validate와 type의 경우 타입 자체가 undefined를 포함하고 있어 상관이 없지만, 문제는 getValues와 getErrors 함수입니다.
+
+이 두 함수를 SicilianProvider 컴포넌트에 제공하지 않은 채 useSicilianContext 함수를 통해 조회한다면, 실제로 조회되는 것은 getValues와 getErrors 함수가 아니라 **콘솔에 에러 메세지를 남기는 함수가 조회**됩니다. 이 에러 메세지를 통해 현재 어떤 컴포넌트에서 props로 넘겨주지 않고 getValues와 getErrors 함수를 사용하고 있는지를 확인할 수 있게 됩니다.
+
+<img width="520" alt="스크린샷 2024-09-11 오후 7 32 53" src="https://github.com/user-attachments/assets/b23cc320-af88-4c15-b3bd-409789b8170d" />
+
+아래는 SicilianProvider와 useSicilianContext를 사용하는 Input 컴포넌트에 대한 간단한 예시입니다. 실제 프로젝트에서는 Map을 사용해 구현하였습니다.
+
+```tsx
+import { register, getValues, getErrors } from "@/hooks/FormController/signUp.ts"
+import { SicilianProvider } from "sicilian/provider"
+
+export default function Home() {
+  { ... }
+
+  return (
+    <>
+      { ... }
+      
+      <SicilianProvider value={{ register, name: "email", getErrors }}>
+        <Input />
+      </SicilianProvider>
+
+      <SicilianProvider value={{ register, name: "password", getErrors }}>
+        <Input />
+      </SicilianProvider>
+      
+      { ... }
+    </>
+  )
+}
+```
+```tsx
+import { useSicilianContext } from "sicilian/provider"
+
+export default function Input({className, ...props}: InputHTMLAttributes<HTMLInputElement>) {
+  const { register, name, validate, getErrors } = useSicilianContext()
+  
+  const errorMessage = getErrors(name)
+  
+  return (
+    <>
+      <input {...props} {...register({ name, validate })} className={clsx(styles.input, className)} />
+      <Show when={!!errorMessage}>
+        {errorMessage}
+      </Show>
+    </>
+  );
+}
+```
+
+아래는 sicilian 1 버전을 사용한 프로젝트의 로그인 form을 크롬의 리액트 도구를 사용해 확인한 것입니다. 보는 바와 같이 email input에 입력을 하고 있어도 form 전체가 반복해서 리랜더링 되는 것을 알 수 있습니다.
+
+<img width="520" alt="스크린샷 2024-09-11 오후 7 32 53" src="https://img1.daumcdn.net/thumb/R1600x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FuOzNn%2FbtsJx1WfBvB%2FLgM8R9aoNDUSLM7Z3gzFc1%2Fimg.webp" />
+
+반면에 최신 버전을 사용하여 다시 만든 로그인 form은 아래와 같습니다. SicilianProvider와 useSicilianContext, 그리고 전체 상태의 일부만을 구독할 수 있는 getErrors 함수를 활용한 덕분에 form 전체가 리랜더링 되는 것이 아닌, 키 입력 중인 Input 컴포넌트만 리랜더링 되는 것을 확인할 수 있습니다.
+
+<img width="520" alt="스크린샷 2024-09-11 오후 7 32 53" src="https://img1.daumcdn.net/thumb/R1600x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2Fb0bspQ%2FbtsJy2AcCYS%2Fjgz5hx0kujNfirBgvxNWc0%2Fimg.webp" />

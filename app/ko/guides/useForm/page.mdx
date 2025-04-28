@@ -1,0 +1,83 @@
+# useForm
+
+sicilian은 static form과 dynamic form으로 form을 구분합니다. static form이란 회원가입이나 로그인 등과 같이 그 구조가 완벽하게 고정되어있는 경우를 말합니다. 반대로 댓글과 같이 유동적으로 구성되는 경우라면 dynamic form에 해당합니다. 2.1 버전 이전의 sicilian으로는 dynamic form을 구현하는 것이 '거의' 불가능했습니다. 아래의 예시에서 볼 수 있는 것처럼, register는 createForm과 1대 1로 대응하며, formController 객체를 사용하여 등록된 모든 input에 영향을 미치기 때문입니다.
+
+```tsx
+// sicilianComment.ts
+const { handleSubmit, register, setForm } = createForm({
+  initValue: { comment: "" },
+  validator: {
+    comment: { required: true },
+  },
+  validateOn: ["submit"],
+  clearFormOn: ["routeChange", "submit"],
+});
+
+// CommentInput.tsx
+function CommentInput({
+  initValue = "",
+  inputName,
+  buttonName,
+}: {
+  initValue?: string;
+  inputName: string;
+  buttonName: string;
+}) {
+  const isLogin = useIsLogin();
+  const { onSubmit, isPending } = useCommentMutation({ initValue, depth });
+  
+  useEffect(() => {
+    setForm({ comment: initValue });
+  }, [initValue]);
+
+  return (
+    <Form.Textarea
+      {...register({name: "comment"})}
+      initValue={initValue}
+      className={styles.textarea}
+      disabled={!isLogin}
+    />
+  )
+}
+```
+
+<img width="520" alt="스크린샷 2024-09-11 오후 7 32 53" src="https://img1.daumcdn.net/thumb/R1600x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2F3YB2d%2FbtsKYDGyynB%2FPWrgx9SOC6KJKik76T1qy0%2Fimg.webp" />
+
+이러한 문제를 해결하고 dynamic form을 지원하기 위해 `useForm` 훅이 추가되었습니다. 반드시 컴포넌트 밖에서 호출해야 했던 CreateForm과 다르게 useForm 훅은 role of hook에 따라 반드시 컴포넌트 안에서 호출해야 합니다. useForm 훅을 사용하면 컴포넌트의 생애주기에 따라 동적으로 생성되었다 사라지는 '지역 상태성'을 가지면서도 sicilian이 제공하는 기능은 모두 사용할 수 있습니다.
+
+```tsx
+function CommentInput({
+  initValue = "",
+  inputName,
+  buttonName,
+}: {
+  initValue?: string;
+  inputName: string;
+  buttonName: string;
+}) {
+  const isLogin = useIsLogin();
+  const { onSubmit, isPending } = useCommentMutation({ initValue, depth });
+  const { handleSubmit, register, setForm } = useForm({
+    initValue: { comment: "" },
+    validator: {
+      comment: { required: true },
+    },
+    validateOn: ["submit"],
+  });
+  
+  useEffect(() => {
+    setForm({ comment: initValue });
+  }, [initValue]);
+ 
+  return (
+    <Form.Textarea
+      {...register({name: "comment"})}
+      initValue={initValue}
+      className={styles.textarea}
+      disabled={!isLogin}
+    />
+  )
+}
+```
+
+로그인∙회원가입과 같은 static form에서도 useForm을 사용할 수 있습니다. 다만 **관심사의 분리**라는 관점에서 본다면 CreateForm을 사용하여 form 로직을 컴포넌트 외부로 분리하는 것이 더 바람직하겠습니다.

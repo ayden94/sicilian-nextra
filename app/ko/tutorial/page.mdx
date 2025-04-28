@@ -1,0 +1,216 @@
+# 튜토리얼: 세 가지 폼 패턴 이해하기
+전역 상태 기반 form 관리 라이브러리 sicilian은 프론트엔드에서 작성하게 되는 form의 형태를 크게 세 가지로 분류합니다. **static form, dynamic form, 그리고 dynamic input**이 그것입니다. 각각의 form이 어떤 형태를 갖는지 설명하기 전에, 우선은 프론트엔드에서 가장 일반적인 형태의 form인 static form을 sicilian으로 구현해보겠습니다.
+
+## Static form
+정적 서식은 form이 어떤 특정 조건에 의해 생성되거나 하지 않으며, 내부의 input 종류도 고정적인 경우를 말합니다. 정적 서식의 대표적인 예시는 회원가입 form입니다. 이는 언제나 회원가입 버튼을 눌러 들어간 페이지에 존재하며, 그 구조도 email password nickname 등으로 늘 고정되어있습니다. 비슷하게 게시글 작성 form도 게시글 작성 페이지에 언제나 존재하며, 그 구조 역시 title content tags 등으로 고정되어있습니다.
+
+이런 정적 서식을 작성할 때 저는 CreateForm에 initValue 혹은 validator 프로퍼티를 제공함으로써 타입 안전하게 form을 관리하도록 권합니다. CreateForm을 사용하면 컴포넌트 외부에서 form을 정의할 수 있습니다.
+
+```tsx
+export const SIGN_UP_FORM = new CreateForm({
+  validator: {
+    email: {
+      required: { required: true, message: "이메일을 입력해주세요" },
+      RegExp: {
+        RegExp: new RegExp("^[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$"),
+        message: "이메일 형식과 맞지 않습니다",
+      },
+    },
+    nickname: {
+      required: { required: true, message: "닉네임을 입력해주세요" },
+      minLength: { number: 2, message: "닉네임은 2자 이상이어야 합니다" },
+      maxLength: { number: 10, message: "닉네임은 10자 이하여야 합니다" },
+    },
+    password: {
+      required: { required: true, message: "비밀번호를 입력해주세요" },
+      minLength: { number: 8, message: "비밀번호는 8자 이상이어야 합니다" },
+      maxLength: { number: 16, message: "비밀번호는 16자 이하여야 합니다" },
+      RegExp: [
+        {
+          RegExp: new RegExp("^[^\\s]+$"),
+          message: "비밀번호는 공백을 포함할 수 없습니다.",
+        },
+        {
+          RegExp: new RegExp("^(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[a-z\\d@$!%*?&]+$"),
+          message: "비밀번호는 소문자, 숫자, 특수문자를 모두 포함해야 합니다",
+        },
+      ],
+    },
+    passwordConfirm: {
+      required: { required: true, message: "비밀번호를 입력해주세요" },
+      minLength: { number: 8, message: "비밀번호는 8자 이상이어야 합니다" },
+      maxLength: { number: 16, message: "비밀번호는 16자 이하여야 합니다" },
+      RegExp: [
+        {
+          RegExp: new RegExp("^[^\\s]+$"),
+          message: "비밀번호는 공백을 포함할 수 없습니다.",
+        },
+        {
+          RegExp: new RegExp("^(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[a-z\\d@$!%*?&]+$"),
+          message: "비밀번호는 소문자, 숫자, 특수문자를 모두 포함해야 합니다",
+        },
+      ],
+      custom: {
+        checkFn: (value: string, store: { password: unknown }) => value !== store.password,
+        message: "비밀번호가 일치하지 않습니다",
+      },
+    },
+    "Check terms and conditions": {
+      checked: { checked: false, message: "약관에 동의해주세요" },
+    }
+  },
+  validateOn: ["submit", "change"],
+  clearFormOn: ["submit", "routeChange"]
+});
+```
+
+이렇게 form의 스펙을 외부에서 정의하게 되면, 관심사의 분리가 명확해집니다. UI 컴포넌트와 폼 검증 로직이 분리되어 각 부분이 자신의 역할에만 집중할 수 있습니다. 폼의 복잡한 유효성 검사 규칙은 컴포넌트 외부에서 관리되므로, 컴포넌트 자체는 사용자 인터페이스에만 집중할 수 있습니다.
+
+또한, 코드 가독성 측면에서도 큰 이점이 있습니다. 컴포넌트 내부가 복잡한 유효성 검사 로직으로 채워지지 않아 전체적인 구조를 파악하기 쉬워집니다. 실제 사용 예시를 보면 컴포넌트 코드가 간결하고 선언적이며, 폼 필드의 정의와 렌더링 로직이 명확하게 구분됩니다.
+
+
+```tsx 
+import { SIGN_UP_FORM } from "..."
+
+const SIGN_UP = [{
+  name: "email",
+  type: "text"
+}, {
+  name: "nickname",
+  type: "text"
+}, {
+  name: "password",
+  type: "password"
+}, {
+  name: "passwordConfirm",
+  type: "password"
+}, {
+  name: "Check terms and conditions",
+  type: "checkbox"
+}] as const;
+ 
+export default function Sicilian() {
+  return (
+    <form style={{ display: "flex", flexDirection: "column", width: "500px" }} onSubmit={SIGN_UP_FORM.handleSubmit((data) => {data})}>
+      {SIGN_UP.map(({ name, type }) => (
+        <div key={name}>
+          {name}
+          <input {...SIGN_UP_FORM.register({ name, type })}/>
+          {SIGN_UP_FORM.getErrors(name)}
+        </div>
+      ))}
+      
+      <button>submit</button>
+    </form>
+  )
+}
+```
+
+## dynamic form
+그러나 모든 form이 정적 서식일 수는 없습니다. 어떤 form은 조건부로 나타나고 사라집니다. 예를 들면 댓글 form이 그렇습니다. 유튜브의 댓글 form을 생각해보면 1) 대댓글 버튼을 누르기 전에는 대댓글 form이 나타나지 않고, 2) 수정 버튼을 누르면 그 자리에 댓글 form이 나타나며, 3) 댓글, 대댓글, 댓글 수정 모두 동일한 구조를 가지고 있습니다. 이처럼 form의 생성은 조건적이지만 그 내부의 구조는 고정적인 경우를 sicilian은 동적 서식이라고 부릅니다.
+
+이런 동적 서식을 작성할 때는 CreateForm을 사용할 수 없습니다. form의 생애주기가 컴포넌트와 함께 해야하기 때문입니다. 그래서 sicilian은 동적 서식을 위한 useForm을 제공합니다. useForm을 사용하면 컴포넌트 내부에서 form을 정의할 수 있습니다.
+
+```tsx
+export function CommentInput({ initComment }: { initComment?: string }) {
+  const COMMENT_FORM = useForm({
+    initValue: {
+      comment: initComment ?? ""
+    },
+    validator: {
+      comment: {
+        required: { required: true, message: "댓글을 입력해주세요" },
+        maxLength: { number: 100, message: "댓글은 100자 이하여야 합니다" },
+        custom: {
+          checkFn: (value: string) => value !== initComment,
+          message: "댓글이 변경되지 않았습니다"
+        }
+      }
+    },
+    validateOn: ["submit", "change"],
+  })
+ 
+  return (
+    <form onSubmit={COMMENT_FORM.handleSubmit((data) => {console.log(data)})}>
+      <input {...COMMENT_FORM.register({ name: "comment" })}/>
+      {COMMENT_FORM.getErrors("comment")}
+      <button>submit</button>
+    </form>
+  )
+}
+```
+
+## dynamic input
+정적 서식은 form의 존재와 input 구조가 정적이며, 동적 서식은 form의 존재가 동적이지만 input 구조는 정적입니다. 마지막으로 알아볼 동적 입력 필드는 동적 서식과는 반대로 form의 존재는 정적이지만 input 구조가 동적입니다. 동적 입력 필드에 대한 일반적인 오해는 이렇습니다. '이름을 입력하면 전화번호 input이 생기고, 전화번호를 입력하면 인증 번호 input이 생기는' 개인 정보 form은 동적 입력 필드가 아니라 정적 서식입니다.
+
+다시 한 번 정적 서식의 정의를 살펴보면 "form의 존재와 input 구조가 정적"이라는 것입니다. 개인 정보 form은 그 존재가 정적이며, input이 동적으로 드러납니다. 그럼에도 불구하고 input의 구조는 늘 name gender phoneNumber phoneNumberValidateNumber 등으로 고정되어있기 때문에 동적 입력 필드가 아니라 정적 서식이 되는 것입니다.
+
+그렇다면 어떤 것이 동적 입력 필드가 될 수 있을까요? 할 일 목록 form은 전형적인 동적 입력 필드의 예시입니다. input 개수가 정해져있지 않고 사용자의 필요에 따라 늘어날 수도, 줄어들 수도 있기 때문입니다.
+
+```tsx
+const TODO_LIST_FORM = new CreateForm({
+  validateOn: ["submit", "change"],
+  clearFormOn: ["submit", "routeChange"],
+});
+ 
+export default function Sicilian() {
+  const [todo, setTodo] = useState<Array<{ name: string, todo: "date" | "text" }>>([{ name: "date", todo: "date" }]);
+ 
+  return (
+    <form onSubmit={TODO_LIST_FORM.handleSubmit((data) => {console.log(data)})}>
+      {todo.map(({ name, todo }, i) => (
+        <div key={i}>
+          {name}
+          <input {...TODO_LIST_FORM.register({ name, type: todo, validate: { required: true } })}/>
+          {TODO_LIST_FORM.getErrors(name)}
+        </div>
+      ))}
+ 
+      <button type="button" onClick={() => setTodo(prev => [...prev, { name: `할일 ${prev.length}`, todo: "text" }])}>Add todo</button>
+      <button>submit</button>
+    </form>
+  )
+}
+```
+
+사실 위의 예시 코드는 동작하지 않습니다. 정확히는 랜더링은 되지만, Add todo 버튼을 클릭하면 "Error: Rendered more hooks than during the previous render." 에러가 발생합니다. 이는 register 함수와 getErrors 함수 내부에 리액트 훅이 존재하기 때문입니다. 리액트에서는 컴포넌트 내부의 훅 갯수를 항상 동일하게 유지해주어야 합니다(훅을 조건부로 호출하지 말라는 훅의 규칙도 이를 위해 존재하는 것입니다). 그런데 input이 늘어나면 그만큼 register 함수와 getErrors 함수를 더 많이 호출하게 되므로 이전 렌더와 비교하여 더 많은 훅이 호출됩니다.
+
+따라서 동적 입력 필드를 작성할 때는 SicilianProvider와 useSicilianContext를 통해 관련 함수를 자식 컴포넌트에서 호출되도록 해야 문제가 생기지 않습니다.
+
+```tsx
+const TODO_LIST_FORM = new CreateForm({
+  validateOn: ["submit", "change"],
+  clearFormOn: ["submit", "routeChange"],
+});
+ 
+export default function Sicilian() {
+  const [todo, setTodo] = useState<Array<{ name: string, type: "date" | "text" }>>([{ name: "date", type: "date" }, { name: "할일 1", type: "text" }]);
+ 
+  return (
+    <form onSubmit={TODO_LIST_FORM.handleSubmit((data) => {console.log(data)})}>
+      {todo.map(({ name, type }, i) => (
+        <div key={i}>
+          <SicilianProvider value={{ register: TODO_LIST_FORM.register, name, type, validate: { required: true }, getErrors: TODO_LIST_FORM.getErrors }}>
+            <TodoInput />
+          </SicilianProvider>
+        </div>
+      ))}
+ 
+      <button type="button" onClick={() => setTodo(prev => [...prev, { name: `할일 ${prev.length}`, type: "text" }])}>Add TODO</button>
+      <button>submit</button>
+    </form>
+  )
+}
+ 
+const TodoInput = () => {
+  const { register, name, validate, type, getErrors } = useSicilianContext();
+ 
+  return (
+    <>
+      {name}
+      <input {...register({name, validate, type})}/>
+      {getErrors(name)}
+    </>
+  )
+}
+```

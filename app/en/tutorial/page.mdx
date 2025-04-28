@@ -1,0 +1,216 @@
+# Tutorial: Three Approaches to Forms
+The global state-based form management library Sicilian classifies forms in frontend development into three main categories: **static forms, dynamic forms, and dynamic inputs**. Before explaining the characteristics of each form type, let's first implement a static form using Sicilian, which is the most common form type in frontend development.
+
+## Static form
+A static form refers to a form that is not conditionally created and has a fixed set of input types. A typical example of a static form is a signup form. It always exists on the page that you navigate to after clicking the signup button, and its structure is consistently fixed with fields like email, password, nickname, etc. Similarly, a post creation form always exists on the post creation page, and its structure is also fixed with fields like title, content, tags, etc.
+
+When creating such static forms, I recommend managing them in a type-safe manner by providing initValue or validator properties to CreateForm. Using CreateForm allows you to define the form outside of components.
+
+```tsx
+export const SIGN_UP_FORM = new CreateForm({
+  validator: {
+    email: {
+      required: { required: true, message: "Please enter your email" },
+      RegExp: {
+        RegExp: new RegExp("^[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$"),
+        message: "Invalid email format",
+      },
+    },
+    nickname: {
+      required: { required: true, message: "Please enter your nickname" },
+      minLength: { number: 2, message: "Nickname must be at least 2 characters" },
+      maxLength: { number: 10, message: "Nickname must be 10 characters or less" },
+    },
+    password: {
+      required: { required: true, message: "Please enter your password" },
+      minLength: { number: 8, message: "Password must be at least 8 characters" },
+      maxLength: { number: 16, message: "Password must be 16 characters or less" },
+      RegExp: [
+        {
+          RegExp: new RegExp("^[^\\s]+$"),
+          message: "Password cannot contain spaces",
+        },
+        {
+          RegExp: new RegExp("^(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[a-z\\d@$!%*?&]+$"),
+          message: "Password must contain lowercase letters, numbers, and special characters",
+        },
+      ],
+    },
+    passwordConfirm: {
+      required: { required: true, message: "Please enter your password" },
+      minLength: { number: 8, message: "Password must be at least 8 characters" },
+      maxLength: { number: 16, message: "Password must be 16 characters or less" },
+      RegExp: [
+        {
+          RegExp: new RegExp("^[^\\s]+$"),
+          message: "Password cannot contain spaces",
+        },
+        {
+          RegExp: new RegExp("^(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[a-z\\d@$!%*?&]+$"),
+          message: "Password must contain lowercase letters, numbers, and special characters",
+        },
+      ],
+      custom: {
+        checkFn: (value: string, store: { password: unknown }) => value !== store.password,
+        message: "Passwords do not match",
+      },
+    },
+    "Check terms and conditions": {
+      checked: { checked: false, message: "Please agree to the terms and conditions" },
+    }
+  },
+  validateOn: ["submit", "change"],
+  clearFormOn: ["submit", "routeChange"]
+});
+```
+
+Defining form specifications externally like this creates a clear separation of concerns. UI components and form validation logic are separated, allowing each part to focus solely on its role. The complex validation rules of the form are managed outside the component, so the component itself can focus only on the user interface.
+
+Additionally, there are significant benefits in terms of code readability. The component internals are not filled with complex validation logic, making it easier to understand the overall structure. As you can see in the usage example, the component code is concise and declarative, with a clear distinction between form field definitions and rendering logic.
+
+```tsx 
+import { SIGN_UP_FORM } from "..."
+
+const SIGN_UP = [{
+  name: "email",
+  type: "text"
+}, {
+  name: "nickname",
+  type: "text"
+}, {
+  name: "password",
+  type: "password"
+}, {
+  name: "passwordConfirm",
+  type: "password"
+}, {
+  name: "Check terms and conditions",
+  type: "checkbox"
+}] as const;
+ 
+export default function Sicilian() {
+  return (
+    <form style={{ display: "flex", flexDirection: "column", width: "500px" }} onSubmit={SIGN_UP_FORM.handleSubmit((data) => {data})}>
+      {SIGN_UP.map(({ name, type }) => (
+        <div key={name}>
+          {name}
+          <input {...SIGN_UP_FORM.register({ name, type })}/>
+          {SIGN_UP_FORM.getErrors(name)}
+        </div>
+      ))}
+      
+      <button>submit</button>
+    </form>
+  )
+}
+```
+
+## dynamic form
+However, not all forms can be static forms. Some forms appear and disappear conditionally. For example, comment forms work this way. If you think about YouTube's comment form: 1) the reply form doesn't appear until you click the reply button, 2) when you click the edit button, a comment form appears in that spot, and 3) comments, replies, and comment edits all have the same structure. Sicilian calls this type of form, where the creation is conditional but the internal structure is fixed, a dynamic form.
+
+When creating such dynamic forms, you cannot use CreateForm. This is because the form's lifecycle must go together with the component. Therefore, Sicilian provides useForm for dynamic forms. Using useForm allows you to define the form inside the component.
+
+
+```tsx
+export function CommentInput({ initComment }: { initComment?: string }) {
+  const COMMENT_FORM = useForm({
+    initValue: {
+      comment: initComment ?? ""
+    },
+    validator: {
+      comment: {
+        required: { required: true, message: "Please enter a comment" },
+        maxLength: { number: 100, message: "Comments must be 100 characters or less" },
+        custom: {
+          checkFn: (value: string) => value !== initComment,
+          message: "Comment has not been changed"
+        }
+      }
+    },
+    validateOn: ["submit", "change"],
+  })
+ 
+  return (
+    <form onSubmit={COMMENT_FORM.handleSubmit((data) => {console.log(data)})}>
+      <input {...COMMENT_FORM.register({ name: "comment" })}/>
+      {COMMENT_FORM.getErrors("comment")}
+      <button>submit</button>
+    </form>
+  )
+}
+```
+
+## dynamic input
+Static forms have static existence and input structure, while dynamic forms have dynamic existence but static input structure. Lastly, dynamic input fields, contrary to dynamic forms, have static form existence but dynamic input structure. A common misconception about dynamic input fields is as follows: A personal information form where 'a phone number input appears after entering a name, and a verification number input appears after entering a phone number' is not a dynamic input field but a static form.
+
+Looking at the definition of a static form again, it is "a form with static existence and input structure." A personal information form exists statically, and inputs are revealed dynamically. Nevertheless, the input structure is always fixed with fields like name, gender, phoneNumber, phoneNumberValidateNumber, etc., making it a static form, not a dynamic input field.
+
+So what could be a dynamic input field? A to-do list form is a typical example of a dynamic input field. This is because the number of inputs is not predetermined and can increase or decrease according to the user's needs.
+
+```tsx
+const TODO_LIST_FORM = new CreateForm({
+  validateOn: ["submit", "change"],
+  clearFormOn: ["submit", "routeChange"],
+});
+ 
+export default function Sicilian() {
+  const [todo, setTodo] = useState<Array<{ name: string, todo: "date" | "text" }>>([{ name: "date", todo: "date" }]);
+ 
+  return (
+    <form onSubmit={TODO_LIST_FORM.handleSubmit((data) => {console.log(data)})}>
+      {todo.map(({ name, todo }, i) => (
+        <div key={i}>
+          {name}
+          <input {...TODO_LIST_FORM.register({ name, type: todo, validate: { required: true } })}/>
+          {TODO_LIST_FORM.getErrors(name)}
+        </div>
+      ))}
+ 
+      <button type="button" onClick={() => setTodo(prev => [...prev, { name: `할일 ${prev.length}`, todo: "text" }])}>Add todo</button>
+      <button>submit</button>
+    </form>
+  )
+}
+```
+
+In fact, the example code above doesn't work. More precisely, it renders, but when you click the Add todo button, an "Error: Rendered more hooks than during the previous render" error occurs. This is because there are React hooks inside the register and getErrors functions. In React, you must always maintain the same number of hooks inside a component (the rule of hooks that says not to call hooks conditionally exists for this reason). But as inputs increase, you call register and getErrors functions more times, resulting in more hooks being called compared to the previous render.
+
+Therefore, when creating dynamic input fields, you should use SicilianProvider and useSicilianContext to ensure that related functions are called from child components to avoid problems.
+
+```tsx
+const TODO_LIST_FORM = new CreateForm({
+  validateOn: ["submit", "change"],
+  clearFormOn: ["submit", "routeChange"],
+});
+ 
+export default function Sicilian() {
+  const [todo, setTodo] = useState<Array<{ name: string, type: "date" | "text" }>>([{ name: "date", type: "date" }, { name: "할일 1", type: "text" }]);
+ 
+  return (
+    <form onSubmit={TODO_LIST_FORM.handleSubmit((data) => {console.log(data)})}>
+      {todo.map(({ name, type }, i) => (
+        <div key={i}>
+          <SicilianProvider value={{ register: TODO_LIST_FORM.register, name, type, validate: { required: true }, getErrors: TODO_LIST_FORM.getErrors }}>
+            <TodoInput />
+          </SicilianProvider>
+        </div>
+      ))}
+ 
+      <button type="button" onClick={() => setTodo(prev => [...prev, { name: `할일 ${prev.length}`, type: "text" }])}>Add TODO</button>
+      <button>submit</button>
+    </form>
+  )
+}
+ 
+const TodoInput = () => {
+  const { register, name, validate, type, getErrors } = useSicilianContext();
+ 
+  return (
+    <>
+      {name}
+      <input {...register({name, validate, type})}/>
+      {getErrors(name)}
+    </>
+  )
+}
+```

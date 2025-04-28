@@ -1,0 +1,27 @@
+# Introduce the sicilian
+
+sicilian은 전역 상태를 기반으로 동작하는 form 상태 관리 도구입니다. 타입스크립트를 지원하며 React.js 18 버전 이상에서 사용할 수 있습니다.
+
+프론트엔드 분야에서 form 상태 관리 도구로 널리 쓰이는 react-hook-form은 ref를 기반으로 동작합니다. 이 때문에 컴포넌트를 forwardRef로 감싸거나, 라이브러리에서 제공하는 useFormContext를 사용해야 합니다. React.js를 사용하는 개발자로서 이러한 제약 사항이 여러모로 불편하게 느껴졌습니다.
+
+sicilian은 이러한 불편함을 해결하기 위해 전역 상태를 기반으로 개발되었습니다. 이는 sicilian이 각각의 input을 state로 관리하며, 제어 컴포넌트 방식으로 form을 작성하도록 도움을 줄 수 있다는 뜻이기도 합니다. 또한, 전역 상태를 기반으로 하기에 context API 혹은 여타 전역 상태 관리 도구의 도움 없이도 원하는 컴포넌트 어디에서나 호출하여 사용할 수 있습니다.
+
+##  What's new in sicilian@3.0.0
+
+* playDragon 함수가 CreateForm 클래스로 변경되었습니다.
+* initValue가 반드시 제공되어야 했던 이전과 달리 CreateForm 클래스의 파라미터는 모두 선택적으로 제공할 수 있습니다.
+* 이전까지의 sicilian은 텍스트 위주의 input type만을 처리하였습니다. 3 버전부터는 type="checkbox"와 type="file"을 포함한 모든 종류의 input을 처리할 수 있습니다. 이를 위해 validate에 input이 check 상태인지 확인할 수 있는 'checked'가 추가되었습니다.
+* initValue를 선택적으로 제공하게 되면서, register 함수의 파라미터가 변경되었습니다. 자세한 내용은 아래에서 자세히 다뤄보겠습니다.
+* validateOn에 'change'가 추가되었습니다. 이를 사용하여 onChange 이벤트가 트리거 될 때마다 input value를 validate할 수 있습니다. 다만, 이 방법은 어플리케이션에 부담을 줄 수 있으므로 사용에 주의가 필요합니다.
+* form 상태와 error 상태를 관리하기 위한 함수의 이름이 setForm, FormState, setError, ErrorState에서 getValues, setValues, getErrors, setErrors로 변경되었습니다.
+
+## Installation
+
+Sicilian은 아래의 다양한 방법으로 설치할 수 있습니다.
+
+```bash
+npm i sicilian@latest
+pnpm add sicilian@latest
+yarn add sicilian@latest
+bun add sicilian@latest
+```

@@ -36,14 +36,19 @@ export default async function RootLayout({ children, params }) {
                 "frontMatter": {}
               },
               {
+                "name": "tutorials",
+                "title": "Tutorials",
+                "route": "/tutorial",
+              },
+              {
                 "name": "guides",
                 "title": "Guides",
                 "route": null,
                 "children": [
                   {
-                    "name": "create-a-form",
+                    "name": "CreateForm",
                     "route": "/guides/create-a-form",
-                    "title": "Create a form",
+                    "title": "CreateForm",
                     "frontMatter": {}
                   },
                   {
