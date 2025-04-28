@@ -1,0 +1,86 @@
+# useForm
+
+Sicilian distinguishes forms into static forms and dynamic forms. A static form refers to cases where the structure is completely fixed, such as in registration or login forms. In contrast, forms that are dynamically structured, such as comment forms, fall under the category of dynamic forms.
+Before version 2.1, implementing dynamic forms with Sicilian was "almost" impossible. As shown in the example below, register corresponds one-to-one with createForm, and the formController object affects all inputs registered with it.
+
+```tsx
+// sicilianComment.ts
+const { handleSubmit, register, setForm } = createForm({
+  initValue: { comment: "" },
+  validator: {
+    comment: { required: true },
+  },
+  validateOn: ["submit"],
+  clearFormOn: ["routeChange", "submit"],
+});
+
+// CommentInput.tsx
+function CommentInput({
+  initValue = "",
+  inputName,
+  buttonName,
+}: {
+  initValue?: string;
+  inputName: string;
+  buttonName: string;
+}) {
+  const isLogin = useIsLogin();
+  const { onSubmit, isPending } = useCommentMutation({ initValue, depth });
+  
+  useEffect(() => {
+    setForm({ comment: initValue });
+  }, [initValue]);
+
+  return (
+    <Form.Textarea
+      {...register({name: "comment"})}
+      initValue={initValue}
+      className={styles.textarea}
+      disabled={!isLogin}
+    />
+  )
+}
+```
+
+<img width="520" alt="스크린샷 2024-09-11 오후 7 32 53" src="https://img1.daumcdn.net/thumb/R1600x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2F3YB2d%2FbtsKYDGyynB%2FPWrgx9SOC6KJKik76T1qy0%2Fimg.webp" />
+
+To address this issue and support dynamic forms, the useForm hook has been introduced. Unlike createForm, which had to be called outside of components, the useForm hook must be called inside a component, adhering to the rules of hooks.
+
+By using the useForm hook, you can leverage Sicilian's full functionality while maintaining the "local state" that dynamically appears and disappears according to the component's lifecycle.
+
+```tsx
+function CommentInput({
+  initValue = "",
+  inputName,
+  buttonName,
+}: {
+  initValue?: string;
+  inputName: string;
+  buttonName: string;
+}) {
+  const isLogin = useIsLogin();
+  const { onSubmit, isPending } = useCommentMutation({ initValue, depth });
+  const { handleSubmit, register, setForm } = useForm({
+    initValue: { comment: "" },
+    validator: {
+      comment: { required: true },
+    },
+    validateOn: ["submit"],
+  });
+  
+  useEffect(() => {
+    setForm({ comment: initValue });
+  }, [initValue]);
+ 
+  return (
+    <Form.Textarea
+      {...register({name: "comment"})}
+      initValue={initValue}
+      className={styles.textarea}
+      disabled={!isLogin}
+    />
+  )
+}
+```
+
+The useForm hook can also be used with static forms, such as login or signup forms. However, from the perspective of **separation of concerns**, it is more advisable to use createForm to separate form logic from the component itself.

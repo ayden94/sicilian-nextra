@@ -1,0 +1,25 @@
+
+# in App Router
+
+In the Next.js App Router environment, Sicilian must be used with the **'use client'** directive. This is because the elements that make up Sicilian, such as **useSyncExternalStore and useContext**, all require the 'use client' directive. Other than this, the syntax can be used in the same way as before.
+
+```tsx
+'use client'
+import { SicilianProvider } from "sicilian/provider";
+import { register } from "@/component/play";
+import Input from "@/component/Input";
+
+export default function Home() {
+  return (
+    <div>
+      <SicilianProvider value={{register, name: "email"}}>
+        <Input />
+      </SicilianProvider>
+
+      <SicilianProvider value={{register, name: "password"}}>
+        <Input />
+      </SicilianProvider>
+    </div>
+  )
+}
+```
