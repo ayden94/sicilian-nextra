@@ -25,7 +25,7 @@ export default function metadata(lang) {
   const commonMetadata = {
     images: [
       {
-        url: 'https://private-user-images.githubusercontent.com/144667387/438031871-8b31fafe-108f-4d2e-a1f4-0b1b53fc049a.jpg?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDU4MTI0NDAsIm5iZiI6MTc0NTgxMjE0MCwicGF0aCI6Ii8xNDQ2NjczODcvNDM4MDMxODcxLThiMzFmYWZlLTEwOGYtNGQyZS1hMWY0LTBiMWI1M2ZjMDQ5YS5qcGc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNDI4JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDQyOFQwMzQ5MDBaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04OTgwNjA5MzI5NmYxZDNjNzJjOTEyNjg5ZmI0NTU1ZWMwOGE3YzBkMjUxNjdlNzFkMmIwNGM3NjdlY2E3NDgxJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.pMlp_3aq-t-AIZS22t0DEsCPX-4SJt9W5-Ofsmz6ynE',
+        url: 'https://img1.daumcdn.net/thumb/R960x0/?scode=mtistory2&fname=https://img1.daumcdn.net/thumb/R750x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FSUuaB%2FbtsMnsbwJQ9%2FcEmJwDLJhACkSwW29dP2T0%2Fimg.webp',
         width: 1200,
         height: 630,
         alt: 'sicilian 라이브러리',
@@ -35,7 +35,7 @@ export default function metadata(lang) {
       type: 'website',
       images: [
         {
-          url: 'https://private-user-images.githubusercontent.com/144667387/438031871-8b31fafe-108f-4d2e-a1f4-0b1b53fc049a.jpg?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDU4MTI0NDAsIm5iZiI6MTc0NTgxMjE0MCwicGF0aCI6Ii8xNDQ2NjczODcvNDM4MDMxODcxLThiMzFmYWZlLTEwOGYtNGQyZS1hMWY0LTBiMWI1M2ZjMDQ5YS5qcGc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwNDI4JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDQyOFQwMzQ5MDBaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT04OTgwNjA5MzI5NmYxZDNjNzJjOTEyNjg5ZmI0NTU1ZWMwOGE3YzBkMjUxNjdlNzFkMmIwNGM3NjdlY2E3NDgxJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.pMlp_3aq-t-AIZS22t0DEsCPX-4SJt9W5-Ofsmz6ynE',
+          url: 'https://img1.daumcdn.net/thumb/R960x0/?scode=mtistory2&fname=https://img1.daumcdn.net/thumb/R750x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FSUuaB%2FbtsMnsbwJQ9%2FcEmJwDLJhACkSwW29dP2T0%2Fimg.webp',
           width: 1200,
           height: 630,
           alt: 'sicilian Library',
