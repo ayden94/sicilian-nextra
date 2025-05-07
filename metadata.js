@@ -25,7 +25,7 @@ export default function metadata(lang) {
   const commonMetadata = {
     images: [
       {
-        url: '/ko/images/sicilian.webp',
+        url: `/${lang}/images/sicilian.webp`,
         width: 1200,
         height: 630,
         alt: 'sicilian 라이브러리',
@@ -35,7 +35,7 @@ export default function metadata(lang) {
       type: 'website',
       images: [
         {
-          url: '/ko/images/sicilian.webp',
+          url: `/${lang}/images/sicilian.webp`,
           width: 1200,
           height: 630,
           alt: 'sicilian Library',
