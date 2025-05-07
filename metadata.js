@@ -25,7 +25,7 @@ export default function metadata(lang) {
   const commonMetadata = {
     images: [
       {
-        url: 'https://img1.daumcdn.net/thumb/R960x0/?scode=mtistory2&fname=https://img1.daumcdn.net/thumb/R750x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FSUuaB%2FbtsMnsbwJQ9%2FcEmJwDLJhACkSwW29dP2T0%2Fimg.webp',
+        url: '/images/sicilian.webp',
         width: 1200,
         height: 630,
         alt: 'sicilian 라이브러리',
@@ -35,7 +35,7 @@ export default function metadata(lang) {
       type: 'website',
       images: [
         {
-          url: 'https://img1.daumcdn.net/thumb/R960x0/?scode=mtistory2&fname=https://img1.daumcdn.net/thumb/R750x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2FSUuaB%2FbtsMnsbwJQ9%2FcEmJwDLJhACkSwW29dP2T0%2Fimg.webp',
+          url: '/images/sicilian.webp',
           width: 1200,
           height: 630,
           alt: 'sicilian Library',
