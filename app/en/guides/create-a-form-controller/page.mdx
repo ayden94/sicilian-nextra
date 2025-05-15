@@ -1,0 +1,227 @@
+# create a formController
+
+In Sicilian, the utility used for managing forms is called a `formController`. This object can be created using either the CreateForm class or the useForm hook. The only difference between them is whether or not they are tied to a component's lifecycle — functionally, they are identical. Both accept an initialization object that configures the formController.
+
+The initialization object can include the following properties: initValue, resolver, validator, validateOn, and clearFormOn. All of these properties are optional.
+
+```tsx
+declare function useForm<T extends InitState>(
+  initObj: {
+    initValue: T,
+    resolver: Resolver<T>,
+    validator: Validator<T>,
+    validateOn: Array<"blur" | "submit" | "change">,
+    clearFormOn?: Array<"submit" | "routeChange">
+  }
+): formController
+```
+
+## initValue
+
+The initValue property is used to provide initial values for form inputs. It defines the default state of each field and, when using TypeScript, also helps infer the structure and types of form data, ensuring type safety. These initial values can be empty strings, default values, or data fetched from an API, and they can also define default states for controls like checkboxes and radio buttons. As shown in the example below, initValue is provided as an object containing all related form fields.
+
+```tsx
+import { CreateForm } from "sicilian";
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  }
+})
+```
+
+## resolver
+
+The resolver property is a powerful tool for form validation, allowing you to define complex validation logic declaratively. In the example below, we use zodResolver to integrate Zod's schema-based validation into Sicilian. This makes it easy to enforce constraints such as valid email formats, minimum or maximum string lengths, password complexity requirements, and required fields. Using .refine() enables cross-field validation — for instance, checking whether two password fields match. This declarative approach improves code readability and maintainability.
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const zSchema = z.object({
+  email: z.string()
+    .email('Please enter a valid email address')
+    .min(1, 'Email is required'),
+  
+  nickname: z.string()
+    .min(2, 'Nickname must be at least 2 characters')
+    .max(20, 'Nickname must be at most 20 characters'),
+  
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password must be at most 100 characters')
+    .regex(/[a-z]/, 'Must include at least one lowercase letter')
+    .regex(/[0-9]/, 'Must include at least one number')
+    .regex(/[^a-zA-Z0-9]/, 'Must include at least one special character'),
+  
+  passwordCheck: z.string()
+    .min(1, 'Password confirmation is required'),
+  
+  agreeToTerms: z.boolean()
+    .refine(val => val === false, {
+      message: 'You must agree to the terms of service'
+    })
+}).refine(data => data.password === data.passwordCheck, {
+  message: 'Passwords do not match',
+  path: ['passwordCheck']
+})
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema)
+})
+```
+
+## validator
+
+The validator object defines individual validation rules for each field. It can be used independently or alongside a resolver, allowing for more flexible validation logic. It’s especially useful for dynamic or conditional validations based on user input.
+
+You can learn more about how to use validator and the order of validation execution in [fas](fas).
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const emailValidate = {
+  required: { required: true, message: "Email is required" },
+  RegExp: {
+    RegExp: new RegExp("^[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$"),
+    message: "Please enter a valid email address",
+  },
+}
+const nicknameValidate = {
+  required: { required: true, message: "Nickname is required" },
+  minLength: { number: 2, message: "Nickname must be at least 2 characters" },
+  maxLength: { number: 20, message: "Nickname must be at most 20 characters" },
+}
+const passwordValidate = {
+  required: { required: true, message: "Password is required" },
+  minLength: { number: 8, message: "Password must be at least 8 characters" },
+  maxLength: { number: 16, message: "Password must be at most 16 characters" },
+  RegExp: [
+    {
+      RegExp: new RegExp(/[a-z]/),
+      message: "Must include at least one lowercase letter",
+    },
+    {
+      RegExp: new RegExp(/[0-9]/),
+      message: "Must include at least one number",
+    },
+    {
+      RegExp: new RegExp(/[^a-zA-Z0-9]/),
+      message: "Must include at least one special character",
+    },
+  ],
+}
+const passwordCheckValidate = {
+  required: { required: true, message: "Password confirmation is required" },
+  custom: {
+    checkFn: (value: string, store: { password: string }) => value !== store.password,
+    message: "Passwords do not match",
+  },
+}
+const agreeValidate = {
+  custom: {
+    checkFn: (_value, _store, checked) => checked ?? false,
+    message: "You must agree to the terms of service",
+  }
+}
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema),
+  validator: {
+    email: emailValidate,
+    nickname: nicknameValidate,
+    password: passwordValidate,
+    passwordCheck: passwordCheckValidate,
+    agreeToTerms: agreeValidate,
+  }
+})
+```
+
+## validateOn
+
+The validateOn property controls when validation is triggered. This array can include any combination of "change", "blur", and "submit":
+
+* "change": Validates on every change, providing real-time feedback.
+* "blur": Validates when the input loses focus, reducing noisy validation.
+* "submit": Validates only when the form is submitted.
+
+By combining these options, you can balance between immediate feedback and a smoother user experience.
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema),
+  validator: {
+    email: emailValidate,
+    nickname: nicknameValidate,
+    password: passwordValidate,
+    passwordCheck: passwordCheckValidate,
+    agreeToTerms: agreeValidate,
+  },
+  validateOn: ["change", "blur", "submit"]
+})
+```
+
+## clearFormOn
+
+Unlike the useForm hook, a formController created with CreateForm is not tied to a component’s lifecycle. This means the controller persists in memory even after the component is unmounted. Therefore, clearFormOn is an important property for managing when to reset the form.
+
+* "submit": Clears the form after submission.
+* "routeChange": Automatically clears the form when navigating to a different page.
+
+This is particularly useful when sharing a controller across multiple pages or using a singleton pattern. It ensures the form doesn't retain stale data when a user revisits it.
+
+> ⚠️ The "routeChange" option currently only works as expected in environments using React Router and Next.js (Page Router and App Router).
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema),
+  validator: {
+    email: emailValidate,
+    nickname: nicknameValidate,
+    password: passwordValidate,
+    passwordCheck: passwordCheckValidate,
+    agreeToTerms: agreeValidate,
+  },
+  validateOn: ["change", "blur", "submit"],
+  clearFormOn: ["submit", "routeChange"]
+})
+```

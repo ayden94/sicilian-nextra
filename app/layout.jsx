@@ -46,15 +46,21 @@ export default async function RootLayout({ children, params }) {
                 "route": null,
                 "children": [
                   {
-                    "name": "CreateForm",
-                    "route": "/guides/create-a-form",
-                    "title": "CreateForm",
+                    "name": "create a formController",
+                    "route": "/guides/create-a-form-controller",
+                    "title": "Create a formController",
                     "frontMatter": {}
                   },
                   {
-                    "name": "useForm",
-                    "route": "/guides/useForm",
-                    "title": "useForm",
+                    "name": "tools of the formController",
+                    "route": "/guides/tools-of-the-form-controller",
+                    "title": "Tools of the formController",
+                    "frontMatter": {}
+                  },
+                  {
+                    "name": "resolver and validator",
+                    "route": "/guides/resolver-and-validator",
+                    "title": "Resolver and Validator",
                     "frontMatter": {}
                   },
                   {

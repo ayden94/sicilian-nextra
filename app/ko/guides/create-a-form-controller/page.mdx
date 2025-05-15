@@ -1,0 +1,216 @@
+# formController 만들기
+
+sicilian은 form을 관리하기 위한 도구 모음을 `formController`라고 부릅니다. 이 객체는 CreateForm 클래스와 useForm 훅을 통해 얻을 수 있습니다. CreateForm 클래스와 useForm 훅은 컴포넌트와 생애주기를 함께하는지 아닌지의 차이만 있을 뿐 본질적으로 동일합니다. 이 둘은 모두 formController를 초기화하는 '초기화 객체'를 인자로 받습니다. 초기화 객체는 initValue, resolver, validator, validateOn, clearFormOn 로 이루어져있으며, 모든 프로퍼티는 옵셔널하게 제공할 수 있습니다.
+
+```tsx
+declare function useForm<T extends InitState>(
+  initObj: {
+    initValue: T,
+    resolver: Resolver<T>,
+    validator: Validator<T>,
+    validateOn: Array<"blur" | "submit" | "change">,
+    clearFormOn?: Array<"submit" | "routeChange">
+  }
+): formController
+```
+
+## initValue
+
+initValue props는 input에 초기값을 제공하기 위해 사용됩니다. 이 속성을 통해 폼 필드의 초기 상태를 정의할 수 있으며, 각 필드의 데이터 타입도 함께 지정됩니다. TypeScript를 사용할 경우, initValue에 정의된 객체 구조를 기반으로 타입 추론이 이루어져 타입 안전성을 확보할 수 있습니다. 초기값은 빈 문자열, 기본값, 혹은 API에서 가져온 데이터 등으로 설정할 수 있으며, 체크박스나 라디오 버튼과 같은 컨트롤에도 기본 상태를 지정할 수 있습니다. 예시 코드에서 볼 수 있듯이, 모든 관련 필드를 포함한 객체 형태로 제공됩니다.
+
+```tsx
+import { CreateForm } from "sicilian";
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  }
+})
+```
+
+## resolver
+
+resolver props는 폼 데이터의 유효성 검사를 위한 강력한 도구로, 선언적인 방식으로 복잡한 검증 규칙을 정의할 수 있게 해줍니다. 아래 예제에서는 zodResolver를 통해 zod 라이브러리의 스키마 기반 검증 기능을 sicilian과 통합하고 있습니다. 이메일 형식 검증, 문자열 길이 제한, 비밀번호 복잡성 요구사항, 필수 필드 검증 등 다양한 규칙을 명확하게 정의할 수 있습니다. 특히 .refine() 메소드를 사용하면 비밀번호 일치 여부 확인과 같은 필드 간 관계 검증도 가능합니다. 이러한 선언적 접근 방식은 코드의 가독성을 높이고 유지보수를 쉽게 만듭니다.
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const zSchema = z.object({
+  email: z.string()
+    .email('유효한 이메일 주소를 입력해 주세요')
+    .min(1, '이메일은 필수 입력 항목입니다'),
+  
+  nickname: z.string()
+    .min(2, '닉네임은 2글자 이상이어야 합니다')
+    .max(20, '닉네임은 20글자 이하여야 합니다'),
+  
+  password: z.string()
+    .min(8, '비밀번호는 8자 이상이어야 합니다')
+    .max(100, '비밀번호는 100자 이하여야 합니다')
+    .regex(/[a-z]/, '최소 하나의 소문자를 포함해야 합니다')
+    .regex(/[0-9]/, '최소 하나의 숫자를 포함해야 합니다')
+    .regex(/[^a-zA-Z0-9]/, '최소 하나의 특수문자를 포함해야 합니다'),
+  
+  passwordCheck: z.string()
+    .min(1, '비밀번호 확인은 필수 입력 항목입니다'),
+  
+  agreeToTerms: z.boolean()
+    .refine(val => val === false, {
+      message: '이용약관에 동의해 주세요'
+    })
+}).refine(data => data.password === data.passwordCheck, {
+  message: '비밀번호가 일치하지 않습니다',
+  path: ['passwordCheck'] // 에러를 passwordCheck 필드에 연결
+})
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema)
+})
+```
+
+## validator
+
+validator 객체는 각 폼 필드에 대한 개별적이고 세부적인 유효성 검사 규칙을 정의합니다. 이는 resolver와 함께 사용하거나 독립적으로 사용할 수 있어 더 유연한 폼 검증이 가능합니다. 각 필드마다 필요한 검증 규칙을 상세하게 정의할 수 있으며, 사용자 입력에 따른 동적 검증이나 조건부 검증에 특히 유용합니다.
+
+validator 객체를 통한 유효성 검증 방법 및 검증 순서 등에 대해서는 [fas](/fas) 에서 더 자세히 알아볼 것입니다.
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const emailValidate = {
+  required: { required: true, message: "이메일을 입력해주세요" },
+  RegExp: {
+    RegExp: new RegExp("^[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$"),
+    message: "유효한 이메일 주소를 입력해 주세요",
+  },
+}
+const nicknameValidate = {
+  required: { required: true, message: "비밀번호를 입력해주세요" },
+  minLength: { number: 2, message: "닉네임은 2글자 이상이어야 합니다" },
+  maxLength: { number: 20, message: "닉네임은 20글자 이하여야 합니다" },
+}
+const passwordValidate = {
+  required: { required: true, message: "비밀번호를 입력해주세요" },
+  minLength: { number: 8, message: "비밀번호는 8자 이상이어야 합니다" },
+  maxLength: { number: 16, message: "비밀번호는 16자 이하여야 합니다" },
+  RegExp: [
+    {
+      RegExp: new RegExp(/[a-z]/),
+      message: "최소 하나의 소문자를 포함해야 합니다",
+    },
+    {
+      RegExp: new RegExp(/[0-9]/),
+      message: "최소 하나의 숫자를 포함해야 합니다",
+    },
+    {
+      RegExp: new RegExp(/[^a-zA-Z0-9]/),
+      message: "최소 하나의 특수문자를 포함해야 합니다",
+    },
+  ],
+}
+const passwordCheckValidate = {
+  required: { required: true, message: "비밀번호 확인은 필수 입력 항목입니다" },
+  custom: {
+    checkFn: (value: string, store: { password: string }) => value !== store.password,
+    message: "비밀번호가 일치하지 않습니다",
+  },
+}
+const agreeValidate = {
+  checked: {
+    checked: true,
+    message: "이용약관에 동의해 주세요",
+  }
+}
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema),
+  validator: {
+    email: emailValidate,
+    nickname: nicknameValidate,
+    password: passwordValidate,
+    passwordCheck: passwordCheckValidate,
+    agreeToTerms: agreeValidate,
+  }
+})
+```
+
+## validateOn
+
+validateOn props는 유효성 검사가 실행되는 시점을 제어합니다. 이 배열에는 "change", "blur", "submit" 세 가지 이벤트 유형을 조합하여 지정할 수 있으며, 각각의 이벤트 시점에 유효성 검사를 수행할지를 결정합니다. "change"는 사용자가 입력 필드의 값을 변경할 때마다 즉시 검증하여 실시간 피드백을 제공합니다. "blur"는 사용자가 필드에서 포커스가 벗어날 때 검증하여 불필요한 오류 메시지 노출을 줄입니다. "submit"은 폼 제출 시점에 최종 검증을 수행합니다. 이 세 가지 검증 시점을 적절히 조합하면 즉각적인 피드백과 원활한 사용자 경험 사이의 균형을 맞출 수 있습니다.
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema),
+  validator: {
+    email: emailValidate,
+    nickname: nicknameValidate,
+    password: passwordValidate,
+    passwordCheck: passwordCheckValidate,
+    agreeToTerms: agreeValidate,
+  },
+  validateOn: ["change", "blur", "submit"]
+})
+```
+
+## clearFormOn
+
+useForm 훅과 달리 CreateForm 클래스로부터 만들어지는 formController는 컴포넌트와 생애주기를 함께하지 않습니다. 이는 CreateForm으로 생성된 컨트롤러가 컴포넌트가 언마운트되어도 메모리에 남아있어 데이터가 유지된다는 것을 의미합니다. 따라서 clearFormOn 속성은 이러한 상황에서 폼 데이터를 적절히 초기화하는 시점을 지정하는 중요한 역할을 합니다.
+
+"submit"으로 설정하면 폼 제출 후 데이터가 초기화되고, "routeChange"로 설정하면 페이지 이동 시 자동으로 초기화됩니다. 특히 여러 페이지에 걸쳐 폼 컨트롤러를 공유하는 경우나 싱글톤 패턴으로 폼 컨트롤러를 사용할 때 이 속성을 적절히 설정하는 것이 중요합니다. 이렇게 함으로써 사용자가 다시 폼으로 돌아올 때 이전 입력 데이터가 남아있지 않도록 관리할 수 있습니다.
+
+현재 "routeChange" 옵션은 React Router와 Next.js의 Page Router 및 App Router 환경에서만 정상적으로 동작합니다.
+
+```tsx
+import { CreateForm } from "sicilian";
+import { zodResolver } from "sicilian/resolver"
+
+const formController = new CreateForm({
+  initValue: {
+    email: "",
+    nickname: "",
+    password: "",
+    passwordCheck: "",
+    agreeToTerms: false,
+  },
+  resolver: zodResolver(zSchema),
+  validator: {
+    email: emailValidate,
+    nickname: nicknameValidate,
+    password: passwordValidate,
+    passwordCheck: passwordCheckValidate,
+    agreeToTerms: agreeValidate,
+  },
+  validateOn: ["change", "blur", "submit"],
+  clearFormOn: ["submit", "routeChange"]
+})
+```

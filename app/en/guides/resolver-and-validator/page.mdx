@@ -1,0 +1,178 @@
+# resolver and validator
+
+The CreateForm class and useForm hook validate form inputs through two properties: resolver and validator. The resolver uses libraries such as Zod, Yup, or Superstruct for schema-based validation. On the other hand, the validator leverages Sicilian’s built-in rule system including required, checked, minLength, maxLength, RegExp, and custom.
+
+These two methods can be used together or independently, providing high flexibility. A key point to remember is that when both are used together, validation only proceeds to the validator if the resolver passes first. In other words, if the resolver fails, the validator logic is not executed. This layered structure allows you to use schema-based validation for basic data types and constraints first, and then apply more complex or dynamic validations via validator. Therefore, it’s recommended to clearly separate their roles during form design.
+
+
+
+
+&nbsp;
+
+## validator vs. validate
+
+Although validator and validate may seem similar, they have distinct structures and purposes.
+
+* validate object: Defines validation rules for a single input field, including rules like required, minLength, and RegExp.
+* validator object: A higher-level object that maps all fields in the form to their corresponding validate objects.
+
+In short, the validator describes what to validate across the form, while validate defines how to validate each field. This hierarchical structure allows for well-organized validation across the form, and also enables overrides or custom validations at the field level using the register function.
+
+```tsx
+export type Validator<T extends InitState> = Partial<Record<keyof T, validate<T>>>;
+
+export type validate<T extends InitState> = {
+  required?: { required: boolean; message: string } | boolean;
+  minLength?: { number: number; message: string } | number;
+  maxLength?: { number: number; message: string } | number;
+  checked?: { checked: boolean; message: string } | boolean;
+  RegExp?: RegExpErrorObj | Array<RegExpErrorObj>;
+  custom?: CustomCheckerErrorObj<T> | Array<CustomCheckerErrorObj<T>>;
+};
+
+type RegExpErrorObj = { RegExp: RegExp; message?: string };
+type CustomCheckerErrorObj<T extends InitState> = {
+  checkFn: (value: string, store: T, checked?: boolean) => boolean;
+  message?: string;
+};
+```
+
+### required
+The required rule validates whether an input field has a value. It can be a simple boolean or a detailed object like `{ required: boolean, message: string }`. If only a boolean is provided, a default error message is used. With an object, you can customize the error message. It is common to place this rule first to prevent other validations from running if the field is empty.
+
+### minLength and maxLength
+These rules validate the string length of the input. You can specify them as simple numbers or detailed objects like `{ number: number, message: string }`. If only a number is provided, a default error message is used. These rules are helpful for enforcing password complexity, username length limits, and similar constraints.
+
+### checked
+The checked rule validates whether a checkbox (or similar control) is selected. Like other rules, it can be a simple boolean or an object with a message. It is commonly used for terms of service agreements or other required opt-ins.
+
+### RegExp and custom
+
+Both RegExp and custom can accept either a single rule object or an array of them, enabling multiple layers of validation. Unlike required, minLength, etc., the error message is optional. If omitted, a default message is shown on failure.
+
+RegExp is useful for pattern matching input values using regular expressions, while custom allows for complex or dynamic validation logic using a custom function. If an array of validations is given, Sicilian checks them in order and stops at the first failure, displaying the associated error message.
+```ts
+const passwordValidate = {
+  required: { required: true, message: "Please enter a password" },
+  minLength: { number: 8, message: "Password must be at least 8 characters" },
+  maxLength: { number: 16, message: "Password must be at most 16 characters" },
+  RegExp: [
+    {
+      RegExp: new RegExp(/[a-z]/),
+      message: "Must include at least one lowercase letter",
+    },
+    {
+      RegExp: new RegExp(/[0-9]/),
+      message: "Must include at least one number",
+    },
+    {
+      RegExp: new RegExp(/[^a-zA-Z0-9]/),
+      message: "Must include at least one special character",
+    },
+  ],
+}
+```
+The checkFn used in custom receives the input value and the full form state, returning a boolean. If it returns true, the validation fails; if it returns false, the input passes. This allows you to compare fields (e.g., password confirmation) or implement more nuanced logic.
+```ts
+const passwordCheckValidate = {
+  required: { required: true, message: "Password confirmation is required" },
+  custom: {
+    checkFn: (value: string, store: { password: string }) => value !== store.password,
+    message: "Passwords do not match",
+  },
+}
+```
+
+The strength of custom lies in dynamic, complex validations. For example, checking if a nickname contains inappropriate language based on a list from the server:
+
+```tsx
+const isWordInclude = (wordList: string[]) => (value: string) => {
+  for (const word of wordList) {
+    if (value.includes(word)) return true;
+  }
+
+  return false;
+};
+
+export const useSignValidate = () => {
+  const { data } = useQuery({ ... })
+
+  const email = { ... }
+  const password = { ... }
+  const passwordCheck = { ... }
+
+  const nickname = {
+    custom: [
+      {
+        checkFn: !isWordInclude(data?.bad ?? []),
+        message: "Nickname cannot contain offensive words",
+      },
+      {
+        checkFn: !isWordInclude(data?.sexual ?? []),
+        message: "Nickname cannot contain sexual content",
+      },
+    ]
+  }
+  
+  return { email, nickname, password, passwordCheck }
+}
+```
+```tsx
+export default function SignUp() {
+  const validator = useSignValidate();
+
+  return (
+    { ... }
+    <input {...register("nickname", validator.nickname)} />
+  )
+}
+```
+
+&nbsp;
+
+## validateOptions
+
+Sicilian provides a validateOptions helper to define validation rules with full type safety:
+
+```tsx
+export function validateOptions<T extends InitState>(option: RegisterErrorObj<T>): RegisterErrorObj<T> {
+  return option
+}
+```
+
+While this function appears to just return the input, it plays a key role in TypeScript by enabling proper type inference and IDE auto-completion. Especially in custom validation functions, it ensures the store object is correctly typed, catching errors like invalid property access early in development. This enhances developer experience and improves maintainability during refactoring.
+
+&nbsp;
+
+## Validation Priority and Order
+
+Sicilian provides two ways to supply validate rules. The first is through the validator option in the CreateForm class or useForm hook. The second is by directly passing a validate object to the register function. While both approaches use the same structure for validation rules, they differ in terms of priority.
+
+When a validate object is passed directly to register, it takes precedence over the validator defined in the form controller. This means that the inline rules will override the global validator rules for the same field. This structure is particularly useful when a component needs to override the default form validation logic, improving flexibility and reusability of the code.
+```tsx
+export const { register } = createForm({
+  initValue: { email: "" },
+  validator: {
+    email: {
+      maxLength: 16,
+      minLength: 8
+    }
+  },
+})
+
+export default function Comp() {  
+  return <input {...register({ name: "email", validate: { required: true } })}> // maxLength and minLength will not be applied
+}
+```
+
+In addition to priority, validation order also matters. Within a validate object, the rules are executed in the order they are declared, and validation stops at the first failing rule. In the first example below, minLength is checked before required, so if the minLength passes, the required rule becomes redundant. In contrast, the second example checks required first to ensure the presence of a value before checking its length.
+
+```ts
+// required is meaningless
+password: { minLength: 10, required: true }
+ 
+// required is meaningful
+password: { required: true, minLength: 10 }
+```
+
+If a validation result isn’t as expected, double-check the order of the rules in your validate object.

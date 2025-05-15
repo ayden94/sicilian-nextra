@@ -1,0 +1,173 @@
+# resolver와 validator
+
+CreateForm 클래스와 useForm 훅은 resolver와 validator라는 프로퍼티를 통해 form의 유효성을 검사합니다. resolver는 zod, yup, superstruct를 통해 유효성을 검사하며, validator는 sicilian에 내장된 required, checked, minLength, maxLength, RegExp, custom 등의 다양한 검증 시스템을 사용합니다.
+
+두 방식은 함께 사용하거나 독립적으로 사용할 수 있어 유연성이 높으며, 특히 validator는 검증 우선순위와 순서에 따라 세부적인 검증 흐름을 제어할 수 있는 장점이 있습니다. 반드시 기억해야 할 점은 **두 방식을 함께 사용할 경우 resolver를 모두 통과해야  validator로 검증이 넘어간다**는 것입니다. 즉, resolver에서 유효성 검사에 실패하면 validator의 검증 로직은 실행되지 않습니다. 이러한 구조는 zod나 yup과 같은 스키마 기반 검증으로 기본적인 데이터 형식과 조건을 먼저 확인한 후, 더 복잡하거나 동적인 검증 로직은 validator로 처리하는 계층적 접근을 가능하게 합니다. 따라서 폼 설계 시 두 검증 시스템 간의 역할 분담을 명확히 하는 것을 권장합니다.
+
+&nbsp;
+
+## validator와 validate
+
+validator와 validate는 일견 비슷하게 느껴지지만 실제로는 구조와 용도에서 명확한 차이가 있습니다.
+
+* validate 객체: 하나의 특정 입력 필드에 대한 검증 규칙을 정의하는 객체로, required, minLength, RegExp 등의 개별 검증 규칙들을 포함합니다.
+* validator 객체: 폼 내 모든 필드에 대한 validate 객체들을 모아놓은 상위 레벨 객체로, 각 필드명을 키로 사용하여 해당 필드의 validate 객체를 값으로 가집니다.
+
+즉, validator는 '무엇을 검증할 것인가'를 정의하는 폼 전체의 검증 맵이고, validate는 '어떻게 검증할 것인가'를 정의하는 개별 필드의 검증 규칙입니다. 이러한 계층 구조 덕분에 폼 전체의 유효성 검사를 체계적으로 관리할 수 있으며, 필요에 따라 register 함수에서 개별적인 검증 로직을 적용하거나 재정의할 수 있습니다.
+
+```tsx
+export type Validator<T extends InitState> = Partial<Record<keyof T, validate<T>>>;
+
+export type validate<T extends InitState> = {
+  required?: { required: boolean; message: string } | boolean;
+  minLength?: { number: number; message: string } | number;
+  maxLength?: { number: number; message: string } | number;
+  checked?: { checked: boolean; message: string } | boolean;
+  RegExp?: RegExpErrorObj | Array<RegExpErrorObj>;
+  custom?: CustomCheckerErrorObj<T> | Array<CustomCheckerErrorObj<T>>;
+};
+
+type RegExpErrorObj = { RegExp: RegExp; message?: string };
+type CustomCheckerErrorObj<T extends InitState> = {
+  checkFn: (value: string, store: T, checked?: boolean) => boolean;
+  message?: string;
+};
+```
+
+### required
+required 속성은 입력 필드가 반드시 값을 가져야 하는지를 검증합니다. boolean 값으로 간단히 지정하거나 `{ required: boolean, message: string }` 형태의 객체로 상세하게 정의할 수 있습니다. boolean만 지정할 경우 기본 오류 메시지가 사용되며, 객체 형태로 지정하면 사용자 정의 오류 메시지를 표시할 수 있습니다. 이 속성은 validator 객체의 첫 부분에 배치하여 다른 검증 규칙보다 먼저 실행되도록 하는 것이 일반적이며, 값이 비어있을 경우 후속 검증이 실행되지 않도록 합니다.
+
+### minLength와 maxLength
+minLength와 maxLength 속성은 입력 문자열의 길이를 검증합니다. 두 속성 모두 단순 숫자값으로 간단히 지정하거나 `{ number: number, message: string }` 형태의 객체로 상세하게 정의할 수 있습니다. 숫자만 지정하면 기본 오류 메시지가 사용되고, 객체 형태를 사용하면 사용자 정의 오류 메시지를 표시합니다. minLength는 최소 글자 수를, maxLength는 최대 글자 수를 검증하며, 비밀번호 복잡도 요구사항이나 사용자 이름 길이 제한 같은 사용자 입력 제한에 유용합니다.
+
+### checked
+checked 속성은 체크박스와 같은 요소가 선택되었는지 여부를 검증합니다. boolean 값으로 간단히 지정하거나 `{ checked: boolean, message: string }` 형태의 객체로 상세하게 정의할 수 있습니다. boolean만 지정할 경우 기본 오류 메시지가 사용되고, 객체 형태를 사용하면 사용자 정의 오류 메시지를 표시합니다. 이 속성은 이용약관 동의, 마케팅 수신 동의 등 사용자의 명시적 동의가 필요한 체크박스에 주로 사용되며, 반드시 선택되어야 하는 경우 checked: true로 설정합니다.
+
+### RegExp와 custom
+
+RegExp와 custom 모두 검증 객체 뿐 아니라 검증 객체로 이루어진 배열을 받습니다. 덕분에 input 값을 여러 방면으로 검증해볼 수 있습니다. 앞서 살펴본 required, minLength, maxLength, checked와는 달리 RegExp와 custom를 사용할 때는 오류 메세지를 반드시 넣어줄 필요가 없으며, 메시지를 생략할 경우 검증 실패 시 기본 오류 메시지가 표시됩니다. RegExp는 정규표현식을 사용하여 입력값의 패턴을 검증하는 데 특화되어 있고, custom은 개발자가 정의한 함수를 통해 보다 복잡하고 동적인 검증 로직을 구현할 수 있습니다. 배열 형태로 여러 검증 규칙을 제공하면 Sicilian은 이들을 순차적으로 검증하고, 첫 번째 실패한 규칙에서 검증 프로세스를 중단하고 해당 오류 메시지를 표시합니다.
+
+```ts
+const passwordValidate = {
+  required: { required: true, message: "비밀번호를 입력해주세요" },
+  minLength: { number: 8, message: "비밀번호는 8자 이상이어야 합니다" },
+  maxLength: { number: 16, message: "비밀번호는 16자 이하여야 합니다" },
+  RegExp: [
+    {
+      RegExp: new RegExp(/[a-z]/),
+      message: "최소 하나의 소문자를 포함해야 합니다",
+    },
+    {
+      RegExp: new RegExp(/[0-9]/),
+      message: "최소 하나의 숫자를 포함해야 합니다",
+    },
+    {
+      RegExp: new RegExp(/[^a-zA-Z0-9]/),
+      message: "최소 하나의 특수문자를 포함해야 합니다",
+    },
+  ],
+}
+```
+
+custom에 사용되는 콜백함수 checkFn은 input value와 전체 formState를 인자로 받아 검증 로직을 수행한 후 boolean 값을 반환합니다. 이 **결과가 true이면 오류가 발생하고, false이면 유효성 검사를 통과**합니다. RegExp와 마찬가지로 여러 검증 객체를 배열 형태로 제공할 수 있어 다양한 관점에서 동일한 입력값을 검증할 수 있는 유연성을 제공합니다. 이러한 특성은 회원가입 폼에서 비밀번호와 비밀번호 확인 값의 일치 여부를 확인하는 것과 같은 실용적인 시나리오에서 특히 유용합니다. custom 필드를 사용하면 checkFn: (value, store) => value !== store.password와 같은 간단한 표현식으로 두 필드 간의 관계를 검증하고 적절한 오류 메시지를 사용자에게 제공할 수 있습니다.
+
+```ts
+const passwordCheckValidate = {
+  required: { required: true, message: "비밀번호 확인은 필수 입력 항목입니다" },
+  custom: {
+    checkFn: (value: string, store: { password: string }) => value !== store.password,
+    message: "비밀번호가 일치하지 않습니다",
+  },
+}
+```
+
+custom 필드의 진정한 강점은 동적이고 복잡한 검증 로직을 구현할 수 있다는 점입니다. 예를 들어, 사용자 닉네임에 부적절한 단어가 포함되지 않도록 검증하려 할 때, 이러한 금지어 목록이 백엔드 데이터베이스에서 관리되는 경우가 있습니다. 이런 상황에서도 서버로부터 데이터를 가져와 검증 로직에 적용함으로써 효과적인 유효성 검사가 가능합니다. 이 방식의 큰 이점은 데이터베이스의 금지어 목록이 업데이트되면, 프론트엔드 코드를 수정하지 않고도 자동으로 최신 정책이 적용된다는 점입니다. 이처럼 custom 필드는 외부 데이터 소스와의 통합을 통해 유연하고 확장 가능한 검증 시스템을 구축할 수 있게 해줍니다.
+
+```tsx
+const isWordInclude = (wordList: string[]) => (value: string) => {
+  for (const word of wordList) {
+    if (value.includes(word)) return true;
+  }
+
+  return false;
+};
+
+export const useSignValidate = () => {
+  const { data } = useQuery({ ... })
+
+  const email = { ... }
+  const password = { ... }
+  const passwordCheck = { ... }
+
+  const nickname = {
+    custom: [
+      {
+        checkFn: !isWordInclude(data?.bad ?? []),
+        message: "닉네임에 욕설을 포함할 수 없습니다",
+      },
+      {
+        checkFn: !isWordInclude(data?.sexual ?? [])),
+        message: "닉네임에 성적인 단어를 포함할 수 없습니다",
+      },
+    ]
+  }
+  
+  return { email, nickname, password, passwordCheck }
+}
+```
+```tsx
+export default function SignUp() {
+  const validator = useSignValidate();
+
+  return (
+    { ... }
+    <input {...register("nickname", validator.nickname)} />
+  )
+}
+```
+
+&nbsp;
+
+## validateOptions
+
+sicilian은 타입 안전하게 validate를 작성할 수 있도록 validateOptions 함수를 제공합니다.
+
+```tsx
+export function validateOptions<T extends InitState>(option: RegisterErrorObj<T>): RegisterErrorObj<T> {
+  return option
+}
+```
+
+validateOptions 함수는 언뜻 보기에 단순히 입력받은 옵션을 그대로 반환하는 것처럼 보이지만, 실제로는 TypeScript 환경에서 중요한 역할을 합니다. 이 함수는 복잡한 폼 검증 규칙을 정의할 때 타입 추론과 자동 완성 기능의 혜택을 받을 수 있게 해줍니다. 특히 커스텀 검증 로직에서 store 객체의 타입이 정확하게 추론되어, 잘못된 속성 접근이나 타입 불일치와 같은 오류를 개발 단계에서 미리 발견할 수 있습니다. 이는 런타임에 발생할 수 있는 많은 오류를 컴파일 시점에 방지하고, 코드 작성 시 개발자 경험을 향상시킵니다. 또한 코드 리팩토링 시에도 타입 안전성을 보장하여, 폼 필드의 이름이나 타입이 변경될 때 연관된 검증 로직에서 필요한 변경 사항을 IDE가 자동으로 식별할 수 있게 합니다.
+
+&nbsp;
+
+## 검증 우위와 검증 순서
+
+sicilian에는 validate를 제공할 수 있는 두 가지 방법이 있습니다. 첫 번째는 CreateForm 클래스나 useForm 훅의 validator 옵션을 통한 방법이고, 두 번째는 register 함수에 validate 객체를 직접 전달하는 방법입니다. 두 방법 모두 동일한 형식의 validate 객체를 사용하지만, 검증 우선순위에서는 차이가 있습니다. register 함수에 전달된 validate 객체는 폼 컨트롤러에 정의된 validator 객체보다 우선시되어, 동일한 필드에 대한 검증 규칙을 덮어씁니다. 이러한 구조는 특정 컴포넌트에서 폼의 일반적인 검증 로직을 재정의해야 할 때 유용하며, 코드의 유연성과 재사용성을 높여줍니다.
+
+```tsx
+export const { register } = createForm({
+  initValue: { email: "" },
+  validator: {
+    email: {
+      maxLength: 16,
+      minLength: 8
+    }
+  },
+})
+
+export default function Comp() {  
+  return <input {...register({ name: "email", validate: { required: true } })}> // maxLength와 minLength는 검사하지 않음
+}
+```
+
+또한 검증 순서도 중요한데, validate 객체 내의 필드들은 선언된 순서대로 검증이 진행되며 첫 번째 실패한 규칙에서 검증이 중단됩니다. 아래의 첫 번째 예시 코드에서는 minLength 필드가 required 필드보다 먼저 검증되며, (minLength가 충족되면 required는 자연히 충족되므로) required는 사실상 아무 일도 하지 않습니다. 반면에 두 번째 예시에서는 required가 값의 유무를 먼저 검증하고, 이후 minLength가 값의 길이를 검증합니다. 따라서 어떤 input의 검증 결과가 예상과 다르다면 각 필드의 순서를 확인해보는 것이 좋습니다.
+
+```ts
+// required is meaningless
+password: { minLength: 10, required: true }
+ 
+// required is meaningful
+password: { required: true, minLength: 10 }
+```

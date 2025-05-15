@@ -1,0 +1,120 @@
+# Tools of the formController Object
+
+The formController object contains a variety of methods designed to manage forms. Each of these methods serves a specific purpose, working together to handle the entire lifecycle of a form. The register function registers input fields and automatically attaches event handlers. getValues and getErrors allow you to retrieve the current form state and validation errors. With setValues and setErrors, you can inject external data or directly control the state. The handleSubmit method validates the data on form submission and only calls the callback if the form passes all validations. By using these tools, complex form logic can be managed declaratively and systematically, improving both development productivity and code quality.
+```ts
+const {
+  initValue,
+  register,
+  getValues,
+  getErrors,
+  setValues,
+  setErrors,
+  handleSubmit
+} = formController
+```
+
+&nbsp;
+
+## register
+
+The register function is a core feature of the Sicilian form controller that registers form fields and automatically connects the necessary event handlers. As seen in the type definitions below, it supports a wide variety of input types and ensures type safety in TypeScript. The `ExtractKeys<T>` variant only permits field names defined in initValue or validator, preventing typos or the use of non-existent fields. On the other hand, the string variant allows for more flexibility when dynamically adding fields. For radio buttons, the value property is required and distinguishes between radio buttons with the same name. You can also optionally provide a validate object for each field to apply individual validation rules.
+```tsx
+type TRegister<T extends InitState> = {
+  // For radio type – ExtractKeys<T> version
+  <K extends ExtractKeys<T>>(params: { name: K; validate?: RegisterErrorObj<T>; type: 'radio'; value: string }): IRegister<T>,
+  // For non-radio types – ExtractKeys<T> version
+  <K extends ExtractKeys<T>>(params: { name: K; validate?: RegisterErrorObj<T>; type?: Exclude<ValidInputTypes, 'radio'> }): IRegister<T>,
+  
+  // For radio type – string version
+  (params: { name: string; validate?: RegisterErrorObj<T>; type: 'radio'; value: string }): IRegister<T>,
+  // For non-radio types – string version
+  (params: { name: string; validate?: RegisterErrorObj<T>; type?: Exclude<ValidInputTypes, 'radio'> }): IRegister<T>;
+}
+```
+
+The register function returns an IRegister interface, which provides the event handlers and attributes necessary for integrating with React input elements. The onChange, onBlur, and onFocus handlers update form state on value change, blur, and focus respectively, optionally triggering validation. The SicilianEvent type supports both native DOM events and custom event objects. The name and id serve as identifiers for the field, while type specifies the HTML input type. Additional properties like checked for checkboxes/radio buttons and value for select or text inputs are included as needed. All of these can be applied to JSX elements using the spread operator: `{...register({ name: "email" })}`, greatly reducing boilerplate.
+```ts
+export interface IRegister<T extends InitState> {
+  onChange: (e: SicilianEvent) => void
+  onFocus: (e: SicilianEvent) => void
+  onBlur: (e: SicilianEvent) => void
+  name: ExtractKeys<T> | string
+  id: ExtractKeys<T> | string
+  type: HTMLInputElement["type"]
+  value?: string
+  checked?: boolean
+}
+```
+
+&nbsp;
+
+
+## Values and Errors
+
+The formController provides several methods to access and manage the current values and error states of form inputs. getValues retrieves all field values or specific values selectively, while getErrors fetches the current error messages for each field. These functions work in a subscription-based manner, causing components to re-render whenever the corresponding values change. At a lower level, setStore and getStore offer direct access to the internal form state store, which can be useful in complex state management scenarios. This flexible API allows developers to finely control form data—initializing forms with data from external APIs or dynamically updating values based on certain conditions.
+
+Since the objects returned from getValues and getErrors represent global state, they can introduce re-rendering issues similar to those of the React Context API. Even if input states are well-isolated, if a parent component holds a reference to the getValues object, the entire parent component may re-render. To address this, both getValues and getErrors support an optional name argument, allowing subscription to only part of the global state. Without an argument, the entire form state or error object is returned. When a field name is passed in, only that field’s value or error is returned.
+```ts
+getValues: State<T, unknown>;
+getErrors: State<{ [key in keyof T]: string }, string>;
+setValues: IStore<T>["setStore"];
+setErrors: IStore<{ [key in keyof T]: string }>["setStore"];
+```
+
+```ts
+export type State<T extends InitState, BasicReturnType> = {
+  (): T & { [x: string]: BasicReturnType | undefined };
+  <K extends ExtractKeys<T>>(name: K): T[K];
+  (name: string): BasicReturnType | undefined;
+}
+
+export interface IStore<T> {
+  ...
+  setStore: (nextState: Partial<T> & { [x: string]: string | boolean | FileList }) => void;
+  ...
+}
+```
+
+setValues and setErrors allow partial updates of form values and error states. This flexible design makes it easy to either retrieve the entire form state or selectively watch specific fields, contributing to performance optimization.
+
+```tsx
+const { setValues } = ArticleFormController
+
+const { data } = useQuery({
+  queryKey: ["review", reviewId],
+  queryFn: getReview(reviewId)
+  }
+});
+
+useEffect(() => {
+  setValues({
+    title: data?.title ?? "",
+    author: data?.author ?? "",
+    description: data?.description ?? ""
+  });
+}, [data]);
+```
+
+&nbsp;
+
+## handleSubmit
+The handleSubmit function accepts a callback, which receives the complete formState and the event object when a submit event occurs. Internally, it handles e.preventDefault(), so the form does not trigger a page reload on submit.
+
+```tsx
+<form
+  onSubmit={handleSubmit(async (data, e) => {
+    const res = await fetch("URL", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  })}
+>
+```
+
+Although you can retrieve the form state manually using getValues and implement the submit logic yourself, using handleSubmit offers several advantages:
+
+1. If any unresolved error messages remain, handleSubmit will block the submit action, preventing invalid data from being sent to the backend.
+2. Similarly, if all inputs managed by the formController are empty, the submission is also halted—ensuring that accidental submits don’t trigger HTTP requests.
+
+Even if the clearFormOn: ["submit"] option is enabled, the form will not reset if the submission fails.
